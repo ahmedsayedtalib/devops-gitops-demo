@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonarqube
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonarqube
+  template:
+    metadata:
+      labels:
+        app: sonarqube
+    spec:
+      containers:
+      - name: sonarqube
+        image: sonarqube:community
+        env:
+          - name: SONARQUBE_JAVA_OPTS
+            value: "-Xms1g -Xmx2g"
+          - name: SONARQUBE_JDBC_URL
+            value: jdbc:postgresql://postgres-sonar-service:5432/postgres-sonar
+          - name: SONARQUBE_JDBC_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-sonar-secret
+                key: POSTGRES_USER
+          - name: SONARQUBE_JDBC_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres-sonar-secret
+                key: POSTGRES_PASSWORD
+        volumeMounts:
+        - name: sonarqube-data
+          mountPath: /opt/sonarqube/data
+      volumes:
+      - name: sonarqube-data
+        persistentVolumeClaim:
+          claimName: sonarqube-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarqube-service
+  labels:
+    app: sonarqube
+spec:
+  selector:
+    app: sonarqube
+  type: NodePort
+  ports:
+  - port: 9000
+    targetPort: 9000
+    nodePort: 32000
+

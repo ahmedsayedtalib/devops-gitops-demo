@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    app: postgres-sonar
+spec:
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-sonar-pv
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-sonar
+  template:
+    metadata:
+      labels:
+        app: postgres-sonar
+    spec:
+      containers:
+      - name: postgres-sonar
+        image: postgres:15
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-sonar-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-sonar-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: postgres-sonar-secret
+              key: POSTGRES_DB
+        volumeMounts:
+        - name: postgres-sonar-pv
+          mountPath: /var/lib/postgresql/data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-sonar-service
+  labels:
+    app: postgres-sonar
+spec:
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    port: 5432
+    targetPort: 5432
