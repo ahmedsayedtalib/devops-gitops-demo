@@ -1,0 +1,16 @@
+# k8s/erp-app/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: erp-service
+  namespace: dev-ns # للتأكد من استخدام الـ Namespace بتاعك
+spec:
+  selector:
+    app: erp-app
+  # يفضل استخدام NodePort أو LoadBalancer للوصول من خارج الكلاستر (Minikube)
+  type: NodePort 
+  ports:
+  - protocol: TCP
+    port: 80 # المنفذ اللي بيستمع ليهو السيرفيس
+    targetPort: 8000 # المنفذ اللي بيستمع ليهو الـ Container
+---
