@@ -1,19 +1,22 @@
 pipeline {
     agent any 
     environment {
-        // ... (بقية المتغيرات زي ما هي) ...
+        // IDs for Credentials items stored in Jenkins.
         GITHUB_CRED = "github-cred" 
         SONAR_TOKEN = "sonarqube-cred" 
         DOCKER_CRED = "docker-cred" 
+        
+        // متغيرات ArgoCD/GitOps (كله في نفس المستودع - Mono-Repo)
         GITOPS_REPO_URL = "https://github.com/ahmedsayedtalib/devops-gitops-demo.git" 
         GITOPS_CRED = "github-cred" 
         GITOPS_DEPLOYMENT_FILE = "k8s/erp-app/deployment.yaml" 
+        
+        // متغيرات إضافية
         DOCKER_REPO = "ahmedsayedtalib/devops-gitops-demo"
-        SONAR_URL = "http://192.168.103.2:32000" 
+        SONAR_URL = "http://192.168.103.2:32000" // تم تصحيح الـ URL
     }
 
     stages {
-        // ... (مرحلة Checkout ما فيها تغيير) ...
         stage ("Checkout") {
             steps {
                 echo "Signing in to git repo"
@@ -25,23 +28,12 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: env.SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN')]) {
                     echo "Starting SonarQube Scan..."
-                    
-                    // 🚨 التعديل يبدأ من هنا لحل مشكلة Permission Denied
-                    script {
-                        // 1. تحديد المسار الكامل للـ Sonar Scanner
-                        def sonarScannerPath = tool 'sonar-scanner'
-                        
-                        // 2. منح صلاحية التنفيذ (Execute permission) للملف
-                        sh "chmod +x ${sonarScannerPath}"
-                        
-                        // 3. تشغيل الـ Scanner باستخدام المسار المحدد
-                        sh "${sonarScannerPath} -Dsonar.projectKey=my-project -Dsonar.sources=. -Dsonar.host.url=${env.SONAR_URL} -Dsonar.login=\$SONAR_AUTH_TOKEN"
-                    }
+                    // العودة للشكل الأبسط
+                    sh "${tool 'sonar-scanner'} -Dsonar.projectKey=my-project -Dsonar.sources=. -Dsonar.host.url=${env.SONAR_URL} -Dsonar.login=\$SONAR_AUTH_TOKEN"
                 }
             }
         }
 
-        // ... (بقية المراحل زي ما هي) ...
         stage ("Docker Build and Push") {
             steps {
                 echo "Building Docker Image..."
@@ -69,8 +61,11 @@ pipeline {
                 
                 script {
                     def newImage = "${env.DOCKER_REPO}:${env.DOCKER_IMAGE_TAG}"
+                    
+                    // تحديث ملف الـ Deployment مباشرةً باستخدام sed
                     sh "sed -i '/image:/c\\        image: ${newImage}' ${env.GITOPS_DEPLOYMENT_FILE}"
                 
+                    // عمل Commit و Push للتغيير
                     sh "git config user.email 'jenkins@ci.com'"
                     sh "git config user.name 'Jenkins CI'"
                     sh "git add ${env.GITOPS_DEPLOYMENT_FILE}"
