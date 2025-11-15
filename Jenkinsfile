@@ -28,8 +28,17 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: env.SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN')]) {
                     echo "Starting SonarQube Scan..."
-                    // العودة للشكل الأبسط
-                    sh "${tool 'sonar-scanner'} -Dsonar.projectKey=my-project -Dsonar.sources=. -Dsonar.host.url=${env.SONAR_URL} -Dsonar.login=\$SONAR_AUTH_TOKEN"
+                    
+                    script {
+                        // 1. تحديد المسار الكامل للـ Sonar Scanner
+                        def sonarScannerPath = tool 'sonar-scanner' 
+                        
+                        // 2. منح صلاحية التنفيذ للملف القابل للتشغيل (داخل /bin)
+                        sh "chmod +x ${sonarScannerPath}/bin/sonar-scanner"
+                        
+                        // 3. تشغيل الـ Scanner باستخدام المسار الكامل
+                        sh "${sonarScannerPath}/bin/sonar-scanner -Dsonar.projectKey=my-project -Dsonar.sources=. -Dsonar.host.url=${env.SONAR_URL} -Dsonar.login=\$SONAR_AUTH_TOKEN"
+                    }
                 }
             }
         }
